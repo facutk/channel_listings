@@ -1,1 +1,1 @@
-Push from Inspiron
+Push from RK802II
