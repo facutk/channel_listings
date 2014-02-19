@@ -14,7 +14,7 @@ exitSave = 0
 workQueue = Queue.Queue()
 outQueue = Queue.Queue()
 threads = []
-zipcode_filename='zip_code_database_reduced.txt'
+zipcode_filename='zipcodes.txt'
 threads_max = 15
 lineups = {}
 
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     save_thread = Thread(target = save_lineups)
     save_thread.start()
-    threads.append(save_thread)
+    #threads.append(save_thread)
 
     while not workQueue.empty():
         time.sleep( 0.1 )
@@ -163,6 +163,7 @@ if __name__ == "__main__":
     exitSave = 1
     for thread in threads:
         thread.join()
+    save_thread.join()
 
     print "Phase 1 finished"
     print "Starting Phase 2"
