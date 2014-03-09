@@ -16,6 +16,7 @@ outQueue = Queue.Queue()
 threads = []
 zipcode_filename='zipcodes.txt'
 threads_max = 15
+timeout = 10
 lineups = {}
 
 def get_lineup( href ):
@@ -30,7 +31,7 @@ def get_lineups( zipcode ):
     values = {'zipcode' : zipcode}
     data = urllib.urlencode(values)
     req = urllib2.Request(url, data)
-    response = urllib2.urlopen(req)
+    response = urllib2.urlopen(req, None, timeout)
     html = response.read()
     lineups = []
     ret_value = {}
@@ -52,7 +53,7 @@ def get_cable_info( lineup ):
     baseurl = "http://tvlistings.zap2it.com/tvlistings/ZCGrid.do?method=decideFwdForLineup&lineupId="
     href = baseurl + lineup
     req_ch= urllib2.Request(href)
-    response_ch= urllib2.urlopen(req_ch)
+    response_ch= urllib2.urlopen(req_ch, None, timeout)
     html_ch= response_ch.read()
     soup_ch= BeautifulSoup(html_ch)
     grid = soup_ch.findAll('div', {'class': 'zc-grid'})
@@ -169,6 +170,8 @@ if __name__ == "__main__":
     print "Starting Phase 2"
 
     empty_out_queue()
+
+    exit()
 
     for lineup in lineups:
         workQueue.put( lineup )
