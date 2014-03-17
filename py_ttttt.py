@@ -6,11 +6,10 @@ import json
 import os
 from itertools import islice
 
-zipcodes = ['90210', '10007']
-
-files = {'zipcodes':'mini_zipcodes.txt',
+files = {'zipcodes':'zipcodes.json',
          'zip_listing': 'zip_listing.json',
-         'ch_listing': 'ch_listing.json'}
+         'ch_listing': 'ch_listing.json',
+         'csv_file': 'TvListingByZipCode.csv'}
 
 def split_every(n, iterable):
     i = iter(iterable)
@@ -93,9 +92,35 @@ def read_downloaded_lineups():
 def read_zipcodes():
     zipcodes = []
     with open( files['zipcodes'], 'rb' ) as f_zipcodes:
-        for zipcode in f_zipcodes.readlines():
-            zipcodes.append( zipcode.strip() )
+        for z in f_zipcodes.readlines():
+            zipcode = json.loads( z )['zipcode']
+            zipcodes.append( zipcode )
     return zipcodes
+
+def read_zipcode_info():
+    zipcodes = {}
+    with open( files['zipcodes'], 'rb' ) as f_zipcodes:
+        for z in f_zipcodes.readlines():
+            data = json.loads( z )
+            zipcode = data['zipcode']
+            zipcodes[ zipcode ] = data['info']
+    return zipcodes
+
+def read_lineup_info():
+    lineups = {} 
+    with open( files['zip_listing'], 'rb' ) as f_listing:
+        for line in f_listing.readlines():
+            data = json.loads( line )
+            lineups[ data['zipcode'] ] = data['lineups']
+    return lineups
+
+def read_channel_info():
+    channels = {} 
+    with open( files['ch_listing'], 'rb' ) as f_listing:
+        for line in f_listing.readlines():
+            data = json.loads( line )
+            channels[ data['lineup'] ] = data['channels']
+    return channels
 
 def setup():
     try:
@@ -112,9 +137,8 @@ def process_zipcodes():
     for zipcode_block in list(split_every(8, zipcodes )):
         current += len( zipcode_block )
         print 'Zipcodes [ %s ] - %d of %d - %.2f ' %(', '.join(zipcode_block),
-                                                     current, 
-                                                     total, 
-                                                     100*float( current ) / total )+' %'
+                                                     current, total, 
+                                                     100*float( current ) / total )+'%'
         f_listing = open( files['zip_listing'], 'ab' )
         zips =  scrap_zipcodes( zipcode_block )
         for zip in zips:
@@ -129,17 +153,48 @@ def process_lineups():
     for lineup_block in list(split_every(4, lineups )):
         current += len( lineup_block )
         print 'Lineups [ %s ] - %d of %d - %.2f ' %(', '.join(lineup_block),
-                                                    current,
-                                                    total,
-                                                    100*float( current ) / total )+' %'
+                                                    current, total,
+                                                    100*float( current ) / total )+'%'
         f_channel = open( files['ch_listing'], 'ab' )
         channels = scrap_lineups( lineup_block )
         for channel in channels:
             f_channel.write( json.dumps( channel ) + '\n' )
         f_channel.close()
 
+def build_csv():
+    zipcodes = read_zipcode_info()
+    lineups = read_lineup_info()
+    channels = read_channel_info()
+    print 'Building CSV'
+    total = len( zipcodes )
+    current = 0
+    f_csv = open( files['csv_file'], 'ab' )
+    for zipcode in zipcodes:
+        print 'Building CSV - %.2f ' %( 100*float( current ) / total )+'%'
+        city = zipcodes[ zipcode ]['city']
+        state = zipcodes[zipcode]['state']
+        country = zipcodes[ zipcode]['country']
+        if zipcode in lineups:
+            for lineup in lineups[zipcode]:
+                id = lineup['id']
+                provider = lineup['name']
+                if id in channels:
+                    for channel in channels[ id ]:
+                        ch_info = channel.split('-')
+                        ch_number = ch_info[0]
+                        ch_name = ch_info[1]
+                        info = '"%s", "%s", "%s", "%s", "%s", "%s", "%s"'%( provider, ch_number,
+                                                                           ch_name, zipcode,
+                                                                           city, state, country )
+                        #print info
+                        f_csv.write( info + '\n' )
+        current += 1
+    f_csv.close()
+
 #setup()
 #process_zipcodes()
 #process_lineups()
+build_csv()
 
 
+# TV provider, channel #, channel name, zip code, city , state, country
