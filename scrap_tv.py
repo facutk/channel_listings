@@ -122,10 +122,11 @@ def read_channel_info():
             channels[ data['lineup'] ] = data['channels']
     return channels
 
-def setup():
+def delete_temps():
     try:
         os.remove( files['zip_listing'] )
         os.remove( files['ch_listing'] )
+        os.remove( files['csv_file'] )
     except OSError:
         pass
 
@@ -186,15 +187,13 @@ def build_csv():
                         info = '"%s", "%s", "%s", "%s", "%s", "%s", "%s"'%( provider, ch_number,
                                                                            ch_name, zipcode,
                                                                            city, state, country )
-                        #print info
                         f_csv.write( info + '\n' )
         current += 1
     f_csv.close()
 
-#setup()
-#process_zipcodes()
-#process_lineups()
-build_csv()
-
-
-# TV provider, channel #, channel name, zip code, city , state, country
+if __name__ == '__main__':
+    delete_temps()
+    process_zipcodes()
+    process_lineups()
+    build_csv()
+    print "Done!"
