@@ -3,13 +3,15 @@ from BeautifulSoup import BeautifulSoup
 from cgi import parse_qs
 from urlparse import urlparse
 import json
-import os
 from itertools import islice
 
 files = {'zipcodes':'zipcodes.json',
          'zip_listing': 'zip_listing.json',
          'ch_listing': 'ch_listing.json',
-         'csv_file': 'TvListingByZipCode.csv'}
+         'lineups_csv': 'Lineups.csv',
+         'lineups_desc_csv': 'LineupsDesc.csv',
+         'ch_listing': 'ch_listing.json',
+         'channel_csv': 'ChannelListings.csv'}
 
 def split_every(n, iterable):
     i = iter(iterable)
@@ -122,14 +124,6 @@ def read_channel_info():
             channels[ data['lineup'] ] = data['channels']
     return channels
 
-def delete_temps():
-    try:
-        os.remove( files['zip_listing'] )
-        os.remove( files['ch_listing'] )
-        os.remove( files['csv_file'] )
-    except OSError:
-        pass
-
 def process_zipcodes():
     zipcodes = read_zipcodes()
     print 'Processing ZipCodes'
@@ -162,38 +156,43 @@ def process_lineups():
             f_channel.write( json.dumps( channel ) + '\n' )
         f_channel.close()
 
-def build_csv():
-    zipcodes = read_zipcode_info()
-    lineups = read_lineup_info()
-    channels = read_channel_info()
-    print 'Building CSV'
-    total = len( zipcodes )
-    current = 0
-    f_csv = open( files['csv_file'], 'ab' )
-    for zipcode in zipcodes:
-        print 'Building CSV - %.2f ' %( 100*float( current ) / total )+'%'
-        city = zipcodes[ zipcode ]['city']
-        state = zipcodes[zipcode]['state']
-        country = zipcodes[ zipcode]['country']
-        if zipcode in lineups:
-            for lineup in lineups[zipcode]:
-                id = lineup['id']
-                provider = lineup['name']
-                if id in channels:
-                    for channel in channels[ id ]:
-                        ch_info = channel.split('-')
-                        ch_number = ch_info[0]
-                        ch_name = ch_info[1]
-                        info = '"%s", "%s", "%s", "%s", "%s", "%s", "%s"'%( provider, ch_number,
-                                                                           ch_name, zipcode,
-                                                                           city, state, country )
-                        f_csv.write( info + '\n' )
-        current += 1
-    f_csv.close()
+def format_lineup_info():
+    print 'Formatting Lineup Info'
+    id_desc = {}
+    l_csv = open( files['lineups_csv'], 'ab' )
+    ld_csv = open( files['lineups_desc_csv'], 'ab' )
+    with open( files['zip_listing'], 'rb' ) as f_listing:
+        for line in f_listing.readlines():
+            data = json.loads( line )
+            zipcode = data['zipcode']
+            lineups = data['lineups']
+            for l in lineups:
+                id = l['id']
+                desc = l['name']
+                id_desc[ id ] = desc
+                l_csv.write('"%s", "%s"'%(zipcode,id)+'\n')
+    l_csv.close()
+    for id in id_desc:
+        ld_csv.write( '"%s", "%s"'%(id, id_desc[id])+'\n')
+    ld_csv.close()
+
+def format_channel_info():
+    print 'Formatting Channel Info'
+    c_csv = open( files['channel_csv'], 'ab' )
+    with open( files['ch_listing'], 'rb' ) as f_listing:
+        for line in f_listing.readlines():
+            data = json.loads( line )
+            key = data['lineup']
+            value = '|'.join( data['channels'] )
+            c_csv.write('"%s", "%s"'%(key,value)+'\n')
+    c_csv.close()
+
+def format_csv():
+    format_lineup_info()
+    format_channel_info()
 
 if __name__ == '__main__':
-    delete_temps()
     process_zipcodes()
     process_lineups()
-    build_csv()
+    format_csv()
     print "Done!"
